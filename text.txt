@@ -1,0 +1,160 @@
+DyLoRA-Guided AdaLoRA for HuBERT
+
+Proposed methodology for efficient rank selection and adaptive rank allocation
+
+1. Motivation
+Standard LoRA requires the rank r to be defined before training. Selecting an appropriate rank may require multiple independent training runs, for example r ∈ {2, 4, 8, 16, 32}. For large foundation models such as HuBERT, this grid search can substantially increase GPU usage and total experimentation time.
+
+The proposed approach combines DyLoRA and AdaLoRA to address two complementary questions:
+
+• DyLoRA: How much rank capacity is required for the downstream task?
+• AdaLoRA: Where should the available rank budget be allocated within the model?
+The central hypothesis is that DyLoRA can provide an efficient estimate of the target rank budget, reducing the need for repeated LoRA grid-search experiments, while AdaLoRA can subsequently distribute that budget according to the importance of individual weight matrices.
+
+2. Proposed Workflow
+2.1 Define the Rank Search Range
+A sufficiently broad rank interval is selected before training. For example, ranks between 2 and 32 may be considered. The interval should contain both low-capacity configurations and configurations large enough to expose a performance saturation region.
+
+2.2 Dynamic Rank Evaluation with DyLoRA
+DyLoRA is used to train across a range of ranks within a single training framework. The goal is to avoid performing an independent full LoRA training run for every candidate rank. After training, the candidate ranks are evaluated to identify the point at which increasing rank provides only marginal downstream performance improvements.
+
+Rank (r)
+
+Illustrative Performance
+
+2
+
+84.2
+
+4
+
+90.5
+
+8
+
+94.1
+
+16
+
+94.3
+
+32
+
+94.4
+
+In this illustrative example, r = 8 would represent an efficient operating point because larger ranks provide only marginal improvements. The objective is not to claim a universal optimal rank, but to identify a task-specific rank region with a favorable performance-efficiency trade-off.
+
+2.3 Use the DyLoRA Result to Inform AdaLoRA
+The rank identified through DyLoRA should primarily inform the target rank or target budget of AdaLoRA rather than automatically becoming its initial rank.
+
+Illustrative configuration:
+
+• DyLoRA efficient rank: r ≈ 8
+• AdaLoRA target rank/budget: approximately 8
+• AdaLoRA initial rank: greater than the target, for example 16
+Starting AdaLoRA with greater capacity allows it to explore a larger set of adaptation components before progressively pruning less important components and converging toward the target budget.
+
+2.4 Adaptive Rank Allocation with AdaLoRA
+Standard LoRA typically applies the same rank to every selected target matrix. For example, four target matrices using r = 8 would receive a uniform allocation of 8, 8, 8, and 8. AdaLoRA instead uses importance-aware pruning and an SVD-like parameterization to allocate the available budget non-uniformly.
+
+With an equivalent total budget, an illustrative final allocation could be 12, 3, 11, and 6. The specific values are only examples; the actual allocation would be determined during training. More important matrices can retain greater adaptation capacity, while less important matrices can operate with a smaller effective rank.
+
+3. Expected Benefits
+• Reduced hyperparameter search cost: DyLoRA may reduce the need to perform several independent LoRA training runs solely to select r.
+• Data-driven target rank selection: The AdaLoRA target budget can be informed by observed task performance rather than an arbitrary choice such as r = 8 or r = 16.
+• More efficient rank allocation: AdaLoRA can allocate more capacity to important matrices and less capacity to matrices that contribute less to the downstream adaptation.
+• Potential reduction in total experimentation cost: The approach targets not only parameter efficiency but also the GPU time spent identifying a suitable PEFT configuration.
+• Improved performance-efficiency trade-off: DyLoRA can help identify where increasing rank begins to produce diminishing returns, after which AdaLoRA can use the selected budget more selectively.
+• Architectural insight into HuBERT: The final AdaLoRA allocation can be analyzed to determine which HuBERT layers or projections consistently require greater adaptation capacity for a downstream task.
+4. Experimental Validation
+The proposed combination should be validated against independent baselines. At minimum, the evaluation should include standard LoRA with conventional rank search, DyLoRA alone, AdaLoRA alone, the proposed DyLoRA-guided AdaLoRA pipeline, and Full Fine-Tuning.
+
+Method
+
+Task Metric
+
+Peak VRAM
+
+Training Time
+
+Search Cost
+
+Trainable Params
+
+Full Fine-Tuning
+
+—
+
+—
+
+—
+
+—
+
+—
+
+LoRA + Grid Search
+
+—
+
+—
+
+—
+
+—
+
+—
+
+DyLoRA
+
+—
+
+—
+
+—
+
+—
+
+—
+
+AdaLoRA
+
+—
+
+—
+
+—
+
+—
+
+—
+
+DyLoRA → AdaLoRA
+
+—
+
+—
+
+—
+
+—
+
+—
+
+The primary question is whether the proposed pipeline reduces total tuning and rank-search cost while preserving downstream performance. Peak GPU memory, total GPU-hours, training throughput, number of trainable parameters, storage requirements, and the task-specific performance metric should be reported.
+
+5. Important Limitation
+DyLoRA → AdaLoRA should be documented as a proposed experimental combination. The original DyLoRA and AdaLoRA papers address different rank-related problems and do not establish this sequential pipeline. Therefore, its benefits for HuBERT must be demonstrated experimentally rather than presented as an established result.
+
+6. Research Hypothesis
+Using DyLoRA to estimate an efficient target rank for AdaLoRA may reduce rank hyperparameter search cost while allowing AdaLoRA to allocate the resulting parameter budget according to the importance of individual weight matrices.
+
+7. Research Question
+Can DyLoRA-guided AdaLoRA reduce the total tuning cost of a HuBERT-based foundation model while maintaining downstream task performance?
+
+8. References
+Valipour, M., Rezagholizadeh, M., Kobyzev, I., & Ghodsi, A. (2023). DyLoRA: Parameter-Efficient Tuning of Pre-trained Models using Dynamic Search-Free Low-Rank Adaptation. EACL 2023. https://aclanthology.org/2023.eacl-main.239/
+
+Zhang, Q., Chen, M., Bukharin, A., He, P., Cheng, Y., Chen, W., & Zhao, T. (2023). Adaptive Budget Allocation for Parameter-Efficient Fine-Tuning (AdaLoRA). ICLR 2023. https://openreview.net/forum?id=lq62uWRJjiY
+
+Lialin, V., Deshpande, V., Yao, X., & Rumshisky, A. (2024). Scaling Down to Scale Up: A Guide to Parameter-Efficient Fine-Tuning. arXiv:2303.15647v2.
