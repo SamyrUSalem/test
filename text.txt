@@ -42,7 +42,7 @@ Illustrative Performance
 
 94.4
 
-In this illustrative example, r = 8 would represent an efficient operating point because larger ranks provide only marginal improvements. The objective is not to claim a universal optimal rank, but to identify a task-specific rank region with a favorable performance-efficiency trade-off.
+In this illustrative example, r=32 achieves the highest absolute performance (94.4). However, r=8 may represent a more efficient operating point, as increasing the rank from 8 to 32 provides only a 0.3-point improvement while substantially increasing the number of trainable LoRA parameters. The appropriate rank should therefore be selected according to the desired trade-off between downstream performance and computational efficiency.
 
 2.3 Use the DyLoRA Result to Inform AdaLoRA
 The rank identified through DyLoRA should primarily inform the target rank or target budget of AdaLoRA rather than automatically becoming its initial rank.
