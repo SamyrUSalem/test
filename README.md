@@ -1,5 +1,3 @@
-Reduced VRAM Usage During Training.
-Since most of the HuBERT backbone remains frozen, memory requirements associated with gradients and optimizer states can be substantially reduced. The paper explains that these components account for a considerable portion of training memory. As a result, PEFT methods can make it possible to train larger models or use larger micro-batch sizes on the same hardware. Artigo.pdf
 
-Potentially Faster Training.
-LoRA may reduce training time because only a small subset of parameters needs to be optimized. However, this should be considered an expected benefit rather than a guaranteed one. The survey shows that having fewer trainable parameters does not necessarily result in faster training, as the additional operations introduced by PEFT methods can create computational overhead. Therefore, the actual training speed improvement should be experimentally measured on the HuBERT-based foundation model. Artigo(1).pdfq
+Reduced Storage Requirements per Model/Task.
+Instead of maintaining a complete fine-tuned copy of HuBERT for each downstream task, the same pre-trained backbone can be shared across tasks while storing only the task-specific LoRA parameters. This can significantly reduce storage requirements, particularly when adapting the foundation model to multiple downstream tasks. The paper highlights storage efficiency and efficient multi-task deployment as important advantages of PEFT methods. 
